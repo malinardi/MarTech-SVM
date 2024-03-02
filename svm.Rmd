@@ -1,0 +1,138 @@
+---
+title: "SUPPORT VECTOR MACHINE MODEL"
+author: "MarTech IPAM 2024"
+date: "2024-03-01"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, }
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(error = FALSE)
+
+
+```
+
+# SVM Model - Predictive Churn  
+
+## 1. Setup do ambiente
+
+### 1.1 Instalação e leitura das bibliotecas (pacotes) necessários
+```{r}
+
+options(repos = "https://cran.rstudio.com")
+
+rm(list = ls())
+if(!require(pacman)) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(tidyverse,
+                 rmarkdown, 
+                 knitr, 
+                 GGally, 
+                 DataExplorer,
+                 gplots,
+                 SmartEDA,
+                 e1071,
+                 caret
+                 )
+p_loaded()
+
+```
+
+### 1.2 Carga e vista geral do ficheiro
+
+```{r}
+
+
+dados <- read.csv("DiabetesData.csv")
+
+#varificar se há alguma linha repetida
+anyDuplicated(dados)
+
+ExpData(dados,type=1) 
+ExpData(dados,type=2) 
+
+
+str(dados) 
+
+plot_intro(dados)
+```
+
+
+## 2. Modelagem
+
+### 2.1 Análise do HiperPlano 
+```{r}
+ggplot(dados, aes(x = bloodpressure, y = glucose, color = factor(diabetes))) +
+  geom_point() +
+  scale_color_manual(values = c("0" = "blue", "1" = "red")) +
+  labs(color = "diabetes") +
+  theme_minimal()
+```
+
+
+### 2.2 Treinamento do modelo
+```{r}
+# Defina a semente para reproduzibilidade
+set.seed(123)
+
+# define a proporção de dados que será usada para treinamento (por exemplo, 0.7 para 70%)
+index <- createDataPartition(dados$diabetes, p = 0.7, list = FALSE)
+
+# Crie conjuntos de treinamento e teste com base nos índices
+conjunto_treinamento <- dados[index, ]
+conjunto_teste <- dados[-index, ]
+
+#validação do Hiperplano na base de treinamento
+ggplot(conjunto_treinamento, aes(x = bloodpressure, y = glucose, color = factor(diabetes))) +
+  geom_point() +
+  scale_color_manual(values = c("0" = "blue", "1" = "red")) +
+  labs(color = "diabetes") +
+  theme_minimal()
+
+
+# Criar um modelo Naive Bayes
+modelo_svm <- svm(diabetes ~ ., data = dados, kernel = "linear")
+
+
+```
+
+### 2.3 Teste do modelo
+```{r}
+# Fazer previsões
+previsoes_contínuas <- predict(modelo_svm, conjunto_teste, decision.values = TRUE)
+limiar <- 0.5  # Escolha um limiar adequado
+previsoes_binarias <- ifelse(previsoes_contínuas > limiar, 1, 0)
+
+
+
+
+
+```
+
+### 2.4 Avaliar o Modelo pela Matriz de Confusão
+```{r}
+# Supondo que 'verdadeiro' são os rótulos reais e 'previsoes' são as previsões do modelo
+
+matriz_confusao <- table(conjunto_teste$diabetes, previsoes_binarias)
+print(matriz_confusao)
+acuracia <- round(sum(diag(matriz_confusao)) / sum(matriz_confusao),3)
+precisao <- round(matriz_confusao[1, 1] / sum(matriz_confusao[, 1]),3)  
+sensibilidade <- round(matriz_confusao[1, 1] / sum(matriz_confusao[1,]),3)  
+npv <- round(matriz_confusao[2, 2] / sum(matriz_confusao[2, ]),3)  
+esp <- round(matriz_confusao[2, 2] / sum(matriz_confusao[ ,2]),3)  
+
+print(" ")
+print(paste("A precisão do modelo e:", precisao))
+print(paste("A sensibilidade do modelo e:", sensibilidade))
+print(paste("o NPV do modelo e:", npv))
+print(paste("A especificidade do modelo e:", esp))
+print(paste("A acurácia do modelo e:", acuracia))
+
+
+```
+
